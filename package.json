@@ -1,0 +1,22 @@
+{
+  "name": "simtomo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zubrungus/simtomo.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Zubrungus/simtomo/issues"
+  },
+  "homepage": "https://github.com/Zubrungus/simtomo#readme",
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
