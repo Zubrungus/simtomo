@@ -24,6 +24,9 @@ function drawHouse(x: number, y: number, color: string){
     ctx.fillRect(x + houseSize - wallWidth, y, wallWidth, houseSize);
     ctx.fillRect(x, y + houseSize - wallWidth, (houseSize / 2) - doorSize, wallWidth);
     ctx.fillRect(x + (houseSize / 2) + doorSize, y + houseSize - wallWidth, (houseSize / 2) - doorSize, wallWidth);
+
+    ctx.fillStyle = "#6e4611ff";
+    ctx.fillRect(x + (houseSize / 2) - doorSize, y + houseSize - wallWidth, (doorSize * 2), wallWidth);
 }
 
 //game logic loop
@@ -71,8 +74,8 @@ function update(){
         if(tomo.x > canvas.width - tomoSize){
             tomo.x = canvas.width - tomoSize;
         }
-        if(tomo.y < 0){
-            tomo.y = 0;
+        if(tomo.y < houseSize + 10){
+            tomo.y = houseSize + 10;
         }
         if(tomo.y > canvas.height - tomoSize){
             tomo.y = canvas.height - tomoSize;
@@ -85,14 +88,12 @@ function draw(){
     //clear canvas before next frame
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    //draw houses
-    drawHouse(40, 10, "#000000");
-    drawHouse(320, 10, "#229999");
-
-    //draw tomos
-    tomoList.forEach((tomo) =>{
+    //draw each tomo and their house
+    tomoList.forEach((tomo, index) =>{
         ctx.fillStyle = tomo.color;
         ctx.fillRect(tomo.x, tomo.y, tomoSize, tomoSize);
+
+        drawHouse(40 + (index * (houseSize + 30)), 10, tomo.houseColor);
     })
 
     //queue next animation frame
@@ -110,6 +111,7 @@ function init(){
         planTimer: 10,
         interruptible: false,
         color: "#5533BB",
+        houseColor: "#000000",
     });
 
     tomoList.push({
@@ -120,6 +122,18 @@ function init(){
         planTimer: 10,
         interruptible: false,
         color: "#33CCDD",
+        houseColor: "#229999",
+    });
+
+    tomoList.push({
+        x: 500,
+        y: 500,
+        xV: 0,
+        yV: 0,
+        planTimer: 10,
+        interruptible: false,
+        color: "#89d809",
+        houseColor: "#593972ff",
     });
 
     //start game logic loop and animation loop

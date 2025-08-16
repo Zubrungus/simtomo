@@ -6,4 +6,5 @@ export interface tomo {
     planTimer: number;
     interruptible: boolean;
     color: string;
+    houseColor: string;
 }
