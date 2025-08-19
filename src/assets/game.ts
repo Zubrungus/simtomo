@@ -19,30 +19,51 @@ const averagePlanLength:number = 150;
 var tomoList:tomo[] = [];
 
 //draw walls in specified color
-function drawHouse(x: number, y: number, color: string){
-    ctx.fillStyle = color;
+function drawHouse(x: number, y: number, tomo: tomo){
+    ctx.fillStyle = tomo.houseColor;
     ctx.fillRect(x, y, wallWidth, houseSize);
     ctx.fillRect(x, y, houseSize, wallWidth);
     ctx.fillRect(x + houseSize - wallWidth, y, wallWidth, houseSize);
     ctx.fillRect(x, y + houseSize - wallWidth, (houseSize / 2) - doorSize, wallWidth);
     ctx.fillRect(x + (houseSize / 2) + doorSize, y + houseSize - wallWidth, (houseSize / 2) - doorSize, wallWidth);
 
-    ctx.fillStyle = "#6e4611ff";
-    ctx.fillRect(x + (houseSize / 2) - doorSize, y + houseSize - wallWidth, (doorSize * 2), wallWidth);
+    //draw the door only if the tomo isn't currently moving through it
+    if(tomo.interruptible || tomo.y < topBuffer + houseSize - wallWidth - tomoSize - 30 || tomo.y > topBuffer + houseSize + 30){
+        ctx.fillStyle = "#6e4611ff";
+        ctx.fillRect(x + (houseSize / 2) - doorSize, y + houseSize - wallWidth, (doorSize * 2), wallWidth);
+    }
 }
 
 function goHome(tomo: tomo, index: number){
+    //find the coordinates for outside the tomo's house
     tomo.xLoc = (houseBuffer + (houseSize / 2)) + (index * (houseSize + houseBuffer)) - (tomoSize / 2);
     tomo.yLoc = topBuffer + houseSize + 30;
 
+    //find the difference between the tomo's location and the destination
     const xDiff = tomo.xLoc - tomo.x;
     const yDiff = tomo.yLoc - tomo.y;
 
+    //find the total distance from the tomo to the destination, then set the x and y velocities accordingly
     const totalDistance = Math.sqrt((xDiff ** 2) + (yDiff ** 2));
+    tomo.xV = (xDiff / totalDistance) / 3;
+    tomo.yV = (yDiff / totalDistance) / 3;
+    tomo.planTimer = 1000;
+}
 
-    tomo.xV = (xDiff / totalDistance) / 4;
-    tomo.yV = (yDiff / totalDistance) / 4;
-    tomo.planTimer = 800;
+function goOutside(tomo: tomo, index: number){
+    //find the coordinates for in front of the door
+    tomo.xLoc = (houseBuffer + (houseSize / 2)) + (index * (houseSize + houseBuffer)) - (tomoSize / 2);
+    tomo.yLoc = topBuffer + houseSize - wallWidth - tomoSize - 30;
+
+    //find the difference between the tomo's location and the destination
+    const xDiff = tomo.xLoc - tomo.x;
+    const yDiff = tomo.yLoc - tomo.y;
+
+    //find the total distance from the tomo to the destination, then set the x and y velocities accordingly
+    const totalDistance = Math.sqrt((xDiff ** 2) + (yDiff ** 2));
+    tomo.xV = (xDiff / totalDistance) / 3;
+    tomo.yV = (yDiff / totalDistance) / 3;
+    tomo.planTimer = 1000;
 }
 
 //game logic loop
@@ -55,6 +76,17 @@ function update(){
 
         //if plan timer is 0, choose next plan. only current plans are walking and doing nothing
         if(tomo.planTimer <= 0){
+            //if the timer runs out and tomo isn't interruptible, it means it just finished moving inside or outside. check its location and update its inHouse status accordingly
+            if(!tomo.interruptible){
+                if(tomo.y < topBuffer + houseSize - wallWidth - tomoSize){
+                    tomo.inHouse = true;
+                } else if(tomo.y > topBuffer + houseSize) {
+                    tomo.inHouse = false;
+                }
+                tomo.interruptible = true;
+            }
+
+            //generate a random number in preparation for choosing a next action
             const random = Math.random();
 
             if(random > 0.25){
@@ -64,10 +96,15 @@ function update(){
                 tomo.interruptible = true;
                 //changes timer to be between 100 and 200 frames
                 tomo.planTimer = averagePlanLength + ((Math.random() - 0.5) * 100);
-            } else if(0.15 < random && random < 0.25) {
-                //start function to move towards door of house
-                tomo.interruptible = false;
-                goHome(tomo, index);
+            } else if(0.20 < random && random < 0.25) {
+                //if tomo is outside, start moving inside. if inside, start moving outside
+                if(!tomo.inHouse){
+                    tomo.interruptible = false;
+                    goHome(tomo, index);
+                } else if(tomo.inHouse){
+                    tomo.interruptible = false;
+                    goOutside(tomo, index);
+                }
             }
             
         }
@@ -83,10 +120,17 @@ function update(){
                 tomo.yV = 0;
             };
         } else if(!tomo.interruptible){
+            //if tomo is moving to a location and close to its destination, initiate either moving inside or outside depending on its inHouse status
             if(Math.abs(tomo.x - tomo.xLoc) < 2 && Math.abs(tomo.y - tomo.yLoc) < 2){
-                tomo.inHouse = true;
-                tomo.xV = 0;
-                tomo.yV = -0.5;
+                if(!tomo.inHouse){
+                    tomo.xV = 0;
+                    tomo.yV = -0.5;
+                    tomo.planTimer = 60;
+                } else if(tomo.inHouse){
+                    tomo.xV = 0;
+                    tomo.yV = 0.5;
+                    tomo.planTimer = 60;
+                }
             }
         }
 
@@ -95,27 +139,35 @@ function update(){
         tomo.y += tomo.yV * 5;
 
         //safeguards for edge of screen
-        if(!tomo.inHouse){
-            if(tomo.x < 0){
-                tomo.x = 0;
-            }
-            if(tomo.x > canvas.width - tomoSize){
-                tomo.x = canvas.width - tomoSize;
-            }
-            if(tomo.y < houseSize + 10){
-                tomo.y = houseSize + 10;
-            }
-            if(tomo.y > canvas.height - tomoSize){
-                tomo.y = canvas.height - tomoSize;
-            }
-        } else if (tomo.inHouse){
-
-
-            if(tomo.y < topBuffer + wallWidth){
-                tomo.y = topBuffer + wallWidth;
-            }
-            if(tomo.y > topBuffer + houseSize - wallWidth - tomoSize){
-                tomo.y = topBuffer + houseSize - wallWidth - tomoSize;
+        if (tomo.interruptible){
+            if(!tomo.inHouse){
+                //if tomo is outside, its bounds are everything within the screen but below the houses
+                if(tomo.x < 0){
+                    tomo.x = 0;
+                }
+                if(tomo.x > canvas.width - tomoSize){
+                    tomo.x = canvas.width - tomoSize;
+                }
+                if(tomo.y < houseSize + topBuffer){
+                    tomo.y = houseSize + topBuffer;
+                }
+                if(tomo.y > canvas.height - tomoSize){
+                    tomo.y = canvas.height - tomoSize;
+                }
+            } else if (tomo.inHouse){
+                //if tomo is inside, its bounds are within the walls of its own house
+                if(tomo.x < houseBuffer + wallWidth + (index * (houseSize + houseBuffer))){
+                    tomo.x = houseBuffer + wallWidth + (index * (houseSize + houseBuffer))
+                }
+                if(tomo.x > houseBuffer + houseSize - wallWidth - tomoSize + (index * (houseSize + houseBuffer))){
+                    tomo.x = houseBuffer + houseSize - wallWidth - tomoSize + (index * (houseSize + houseBuffer));
+                }
+                if(tomo.y < topBuffer + wallWidth){
+                    tomo.y = topBuffer + wallWidth;
+                }
+                if(tomo.y > topBuffer + houseSize - wallWidth - tomoSize){
+                    tomo.y = topBuffer + houseSize - wallWidth - tomoSize;
+                }
             }
         }
     });
@@ -131,7 +183,7 @@ function draw(){
         ctx.fillStyle = tomo.color;
         ctx.fillRect(tomo.x, tomo.y, tomoSize, tomoSize);
 
-        drawHouse(houseBuffer + (index * (houseSize + houseBuffer)), topBuffer, tomo.houseColor);
+        drawHouse(houseBuffer + (index * (houseSize + houseBuffer)), topBuffer, tomo);
     })
 
     //queue next animation frame
@@ -140,7 +192,7 @@ function draw(){
 
 function init(){
     //can eventually set up reading from local storage here
-    //just temporarily manually adding a couple tomos in
+    //just temporarily manually adding some tomos in on startup
     tomoList.push({
         x: 500,
         y: 500,
